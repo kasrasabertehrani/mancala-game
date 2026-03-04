@@ -7,7 +7,8 @@ public class Game {
         PLAYER_1_TURN,
         PLAYER_2_TURN,
         GAME_OVER,
-        PLAYER_DISCONNECTED
+        PLAYER_DISCONNECTED,
+        PAUSED_FOR_RECONNECT
     }
 
     private final Player player1;
@@ -15,6 +16,8 @@ public class Game {
     private final Board board;
     private GameStatus gameStatus;
     private String disconnectedPlayerId;
+    private GameStatus previousStatus;
+
     // --- 1. CONSTRUCTOR & INITIALIZATION ---
 
     public Game(Player player1) {
@@ -76,10 +79,25 @@ public class Game {
 
     public void handleDisconnect(String playerId) {
         if (player2 == null) {
-            this.gameStatus = GameStatus.GAME_OVER; // no winner, just close
+            this.gameStatus = GameStatus.GAME_OVER;
             return;
         }
 
+        this.previousStatus = this.gameStatus;
+        this.gameStatus = GameStatus.PAUSED_FOR_RECONNECT;
+        this.disconnectedPlayerId = playerId;
+    }
+
+    public void handleReconnect(String playerId) {
+        if (gameStatus != GameStatus.PAUSED_FOR_RECONNECT) return;
+        if (!playerId.equals(disconnectedPlayerId)) return;
+
+        this.gameStatus = this.previousStatus;
+        this.disconnectedPlayerId = null;
+        this.previousStatus = null;
+    }
+
+    public void forfeit(String playerId) {
         this.gameStatus = GameStatus.PLAYER_DISCONNECTED;
         this.disconnectedPlayerId = playerId;
     }
@@ -118,7 +136,8 @@ public class Game {
 
         if (this.gameStatus == GameStatus.WAITING_FOR_PLAYER_2
                 || this.gameStatus == GameStatus.GAME_OVER
-                || this.gameStatus == GameStatus.PLAYER_DISCONNECTED) {
+                || this.gameStatus == GameStatus.PLAYER_DISCONNECTED
+                || this.gameStatus == GameStatus.PAUSED_FOR_RECONNECT) {
             throw new IllegalStateException("Game is not in a playable state.");
         }
         if (isPlayer1 && this.gameStatus != GameStatus.PLAYER_1_TURN) {
