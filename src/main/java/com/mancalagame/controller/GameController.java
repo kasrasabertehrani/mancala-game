@@ -2,6 +2,7 @@ package com.mancalagame.controller;
 
 import com.mancalagame.model.GameRoom;
 import com.mancalagame.payload.PlayPitCommand;
+import com.mancalagame.payload.ReconnectRequest;
 import com.mancalagame.service.GameService;
 import com.mancalagame.service.SessionTracker;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
@@ -45,6 +46,20 @@ public class GameController {
 
         // 3. Broadcast the update
         messagingTemplate.convertAndSend("/topic/room/" + updatedRoom.getRoomId(), updatedRoom.getGame());
+    }
+
+    @MessageMapping("/game.reconnect")
+    public void reconnect(@Payload ReconnectRequest request, SimpMessageHeaderAccessor headerAccessor) {
+        // 1. Re-register their brand new WebSocket session in our memory using their secret ID
+        sessionTracker.trackSession(headerAccessor.getSessionId(), request.getPlayerId(), request.getRoomId());
+
+        // 2. Tell the Service to stop the forfeit timer and resume the game!
+        GameRoom updatedRoom = gameService.handlePlayerReconnect(request.getRoomId(), request.getPlayerId());
+
+        // 3. Broadcast the resumed game state to both players
+        if (updatedRoom != null) {
+            messagingTemplate.convertAndSend("/topic/room/" + updatedRoom.getRoomId(), updatedRoom.getGame());
+        }
     }
 
     @MessageExceptionHandler
