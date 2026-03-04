@@ -23,10 +23,15 @@ public class GameService {
     private final Map<String, Instant> lastActivityTimestamps = new ConcurrentHashMap<>();
 
     private static final Duration RECONNECT_GRACE = Duration.ofSeconds(30);
-    private static final Duration INACTIVITY_TIMEOUT = Duration.ofMinutes(5);
+    private static final Duration INACTIVITY_TIMEOUT = Duration.ofMinutes(1); // 1 minute for testing
 
     public GameService(RoomService roomService) {
         this.roomService = roomService;
+    }
+
+    public void startActivityTracking(String roomId) {
+        // Only start tracking if not already tracked (avoid resetting on reconnect)
+        lastActivityTimestamps.putIfAbsent(roomId, Instant.now());
     }
 
     public GameRoom makeMove(String roomId, String playerId, int pitIndex) {

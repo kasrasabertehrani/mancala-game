@@ -26,6 +26,15 @@ public class GameController {
         this.sessionTracker = sessionTracker;
     }
 
+    @MessageMapping("/game.join")
+    public void joinGame(@Payload ReconnectRequest request, SimpMessageHeaderAccessor headerAccessor) {
+        // Track this player's session so we can detect disconnects
+        sessionTracker.trackSession(headerAccessor.getSessionId(), request.getPlayerId(), request.getRoomId());
+
+        // Start activity tracking for this room
+        gameService.startActivityTracking(request.getRoomId());
+    }
+
     @MessageMapping("/game.move")
     public void makeMove(@Payload PlayPitCommand command, SimpMessageHeaderAccessor headerAccessor) {
 

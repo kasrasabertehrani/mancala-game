@@ -7,6 +7,7 @@ import com.mancalagame.payload.JoinRoomRequest;
 import com.mancalagame.service.RoomService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.messaging.simp.SimpMessagingTemplate; // <-- Import this
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -14,9 +15,11 @@ import org.springframework.web.bind.annotation.*;
 public class RoomController {
 
     private final RoomService roomService;
+    private final SimpMessagingTemplate messagingTemplate; // <-- Add this
 
-    public RoomController(RoomService roomService) {
+    public RoomController(RoomService roomService, SimpMessagingTemplate messagingTemplate) {
         this.roomService = roomService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     // 1. POST /api/rooms/create
@@ -46,7 +49,22 @@ public class RoomController {
             return ResponseEntity.badRequest().build();
         }
 
+        // --- ADD THIS ONE LINE ---
+        // Shout to Player 1 that Player 2 just arrived!
+        messagingTemplate.convertAndSend("/topic/room/" + room.getRoomId(), room.getGame());
+        // -------------------------
+
         // Return the successfully started game to the browser
+        return ResponseEntity.ok(room);
+    }
+
+    // 3. GET /api/rooms/{roomId} - For reconnection
+    @GetMapping("/{roomId}")
+    public ResponseEntity<GameRoom> getRoom(@PathVariable String roomId) {
+        GameRoom room = roomService.getRoom(roomId);
+        if (room == null) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.ok(room);
     }
 }
